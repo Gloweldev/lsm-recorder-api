@@ -182,6 +182,93 @@ async function getVideoStats() {
     }));
 }
 
+/**
+ * Get video by session_id and sequence_number
+ * @param {string} sessionId
+ * @param {number} sequenceNumber
+ * @returns {Promise<Object|null>}
+ */
+async function getVideoBySession(sessionId, sequenceNumber) {
+    const query = `
+    SELECT * FROM videos 
+    WHERE session_id = $1 AND sequence_number = $2
+  `;
+    const result = await pool.query(query, [sessionId, sequenceNumber]);
+    return result.rows[0] || null;
+}
+
+/**
+ * Delete video by id
+ * @param {number} id
+ * @returns {Promise<Object|null>} - Deleted row
+ */
+async function deleteVideo(id) {
+    const query = `
+    DELETE FROM videos WHERE id = $1 RETURNING *
+  `;
+    const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
+}
+
+// ==================== PALABRAS FUNCTIONS ====================
+
+/**
+ * Create a new palabra
+ * @param {string} nombre
+ * @returns {Promise<Object>}
+ */
+async function createPalabra(nombre) {
+    const query = `
+    INSERT INTO palabras (nombre)
+    VALUES ($1)
+    RETURNING *
+  `;
+    const result = await pool.query(query, [nombre.trim().toLowerCase()]);
+    return result.rows[0];
+}
+
+/**
+ * Get all palabras, optionally filtered by search term
+ * @param {string} search - Optional search term
+ * @returns {Promise<Array>}
+ */
+async function getPalabras(search = '') {
+    let query = 'SELECT * FROM palabras';
+    const values = [];
+
+    if (search.trim()) {
+        query += ' WHERE nombre ILIKE $1';
+        values.push(`%${search.trim()}%`);
+    }
+
+    query += ' ORDER BY nombre ASC';
+
+    const result = await pool.query(query, values);
+    return result.rows;
+}
+
+/**
+ * Get palabra by nombre
+ * @param {string} nombre
+ * @returns {Promise<Object|null>}
+ */
+async function getPalabraByNombre(nombre) {
+    const query = 'SELECT * FROM palabras WHERE nombre = $1';
+    const result = await pool.query(query, [nombre.trim().toLowerCase()]);
+    return result.rows[0] || null;
+}
+
+/**
+ * Delete palabra by id
+ * @param {number} id
+ * @returns {Promise<Object|null>}
+ */
+async function deletePalabra(id) {
+    const query = 'DELETE FROM palabras WHERE id = $1 RETURNING *';
+    const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
+}
+
 module.exports = {
     pool,
     testConnection,
@@ -190,4 +277,10 @@ module.exports = {
     getVideoCount,
     getVideos,
     getVideoStats,
+    getVideoBySession,
+    deleteVideo,
+    createPalabra,
+    getPalabras,
+    getPalabraByNombre,
+    deletePalabra,
 };

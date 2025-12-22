@@ -124,11 +124,34 @@ async function uploadToS3(buffer, fileName, contentType) {
     }
 }
 
+/**
+ * Delete a file from S3
+ * @param {string} key - S3 key to delete
+ * @returns {Promise<void>}
+ */
+async function deleteFromS3(key) {
+    const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
+
+    const command = new DeleteObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+    });
+
+    try {
+        await s3Client.send(command);
+        console.log(`🗑️ Eliminado de S3: ${key}`);
+    } catch (error) {
+        console.error(`❌ Error eliminando de S3: ${key}`, error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     s3Client,
     testConnection,
     generateUploadUrl,
     generateDownloadUrl,
     uploadToS3,
+    deleteFromS3,
     BUCKET_NAME,
 };

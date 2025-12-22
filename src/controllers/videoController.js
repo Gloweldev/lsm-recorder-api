@@ -325,6 +325,59 @@ async function testS3Upload(req, res) {
     }
 }
 
+/**
+ * Delete video by session_id and sequence_number
+ * DELETE /api/videos/session/:sessionId/sequence/:sequenceNumber
+ */
+async function deleteVideoBySession(req, res) {
+    try {
+        const { sessionId, sequenceNumber } = req.params;
+
+        if (!sessionId || !sequenceNumber) {
+            return res.status(400).json({
+                success: false,
+                error: 'sessionId y sequenceNumber son requeridos',
+            });
+        }
+
+        console.log(`🗑️ Eliminando video: sesión ${sessionId}, intento ${sequenceNumber}`);
+
+        // Find the video
+        const video = await db.getVideoBySession(sessionId, parseInt(sequenceNumber));
+
+        if (!video) {
+            return res.status(404).json({
+                success: false,
+                error: 'Video no encontrado',
+            });
+        }
+
+        // Delete from S3
+        try {
+            await s3.deleteFromS3(video.s3_key);
+        } catch (s3Error) {
+            console.warn('⚠️ Error eliminando de S3 (continuando con DB):', s3Error.message);
+        }
+
+        // Delete from DB
+        const deleted = await db.deleteVideo(video.id);
+
+        console.log(`✅ Video eliminado: ${video.s3_key}`);
+
+        res.json({
+            success: true,
+            deleted: deleted,
+            message: `Video sesión ${sessionId} intento ${sequenceNumber} eliminado`,
+        });
+    } catch (error) {
+        console.error('❌ Error eliminando video:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+        });
+    }
+}
+
 module.exports = {
     getUploadUrl,
     saveVideoMetadata,
@@ -334,4 +387,5 @@ module.exports = {
     healthCheck,
     uploadVideoProxy,
     testS3Upload,
+    deleteVideoBySession,
 };
