@@ -97,10 +97,13 @@ async function generateDownloadUrl(key, expiresIn = 3600) {
  * @returns {Promise<string>} - S3 key of uploaded file
  */
 async function uploadToS3(buffer, fileName, contentType) {
+    const startTime = Date.now();
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 10);
     // Always use .mp4 extension for videos
     const key = `videos/${timestamp}-${randomStr}.mp4`;
+
+    console.log(`⏱️ [S3] Iniciando upload: ${key} (${(buffer.length / 1024).toFixed(1)} KB)`);
 
     const command = new PutObjectCommand({
         Bucket: BUCKET_NAME,
@@ -111,10 +114,12 @@ async function uploadToS3(buffer, fileName, contentType) {
 
     try {
         await s3Client.send(command);
-        console.log(`✅ Video subido a S3: ${key}`);
+        const duration = Date.now() - startTime;
+        console.log(`✅ [S3] Upload completado: ${key} en ${duration}ms`);
         return key;
     } catch (error) {
-        console.error('❌ Error subiendo a S3:', error.message);
+        const duration = Date.now() - startTime;
+        console.error(`❌ [S3] Error después de ${duration}ms:`, error.message);
         throw error;
     }
 }

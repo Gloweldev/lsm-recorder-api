@@ -221,6 +221,8 @@ async function healthCheck(req, res) {
  * Expects multipart/form-data with 'video' file and 'palabra' field
  */
 async function uploadVideoProxy(req, res) {
+    const totalStart = Date.now();
+
     try {
         const { palabra } = req.body;
         const file = req.file;
@@ -240,21 +242,33 @@ async function uploadVideoProxy(req, res) {
             });
         }
 
-        console.log(`📤 Recibiendo video: ${file.originalname} (${file.size} bytes) para "${palabra}"`);
+        console.log(`\n📤 ═══════════════════════════════════════════════`);
+        console.log(`📤 Recibiendo: ${file.originalname} (${(file.size / 1024).toFixed(1)} KB) para "${palabra}"`);
 
-        // Upload to S3
+        // Step 1: Upload to S3
+        const s3Start = Date.now();
         const s3_key = await s3.uploadToS3(file.buffer, file.originalname, file.mimetype);
+        const s3Duration = Date.now() - s3Start;
+        console.log(`⏱️ [Timing] S3 Upload: ${s3Duration}ms`);
 
-        // Save metadata to DB
+        // Step 2: Save metadata to DB
+        const dbStart = Date.now();
         const video = await db.insertVideo({
             palabra,
             s3_key,
         });
+        const dbDuration = Date.now() - dbStart;
+        console.log(`⏱️ [Timing] DB Insert: ${dbDuration}ms`);
 
-        // Get updated count
+        // Step 3: Get updated count
+        const countStart = Date.now();
         const count = await db.getVideoCount(palabra);
+        const countDuration = Date.now() - countStart;
+        console.log(`⏱️ [Timing] DB Count: ${countDuration}ms`);
 
-        console.log(`✅ Video guardado: ${s3_key} (Total para "${palabra}": ${count})`);
+        const totalDuration = Date.now() - totalStart;
+        console.log(`✅ Total: ${totalDuration}ms (S3: ${s3Duration}ms, DB: ${dbDuration + countDuration}ms)`);
+        console.log(`📤 ═══════════════════════════════════════════════\n`);
 
         res.status(201).json({
             success: true,
@@ -263,7 +277,8 @@ async function uploadVideoProxy(req, res) {
             totalForPalabra: count,
         });
     } catch (error) {
-        console.error('❌ Error en uploadVideoProxy:', error);
+        const totalDuration = Date.now() - totalStart;
+        console.error(`❌ Error después de ${totalDuration}ms:`, error);
 
         if (error.code === '23505') {
             return res.status(409).json({
