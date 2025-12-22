@@ -40,7 +40,8 @@ function parseConnectionString(url) {
 const dbConfig = parseConnectionString(process.env.DATABASE_URL || '');
 const pool = new Pool({
     ...dbConfig,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    // SSL solo si está explícitamente habilitado via PGSSLMODE
+    ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : false,
     max: 10,
 });
 
