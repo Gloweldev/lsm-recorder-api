@@ -224,7 +224,7 @@ async function uploadVideoProxy(req, res) {
     const totalStart = Date.now();
 
     try {
-        const { palabra } = req.body;
+        const { palabra, session_id, sequence_number, session_started_at } = req.body;
         const file = req.file;
 
         // Validation
@@ -243,6 +243,7 @@ async function uploadVideoProxy(req, res) {
         }
 
         console.log(`\n📤 ═══════════════════════════════════════════════`);
+        console.log(`📤 Sesión: ${session_id || 'N/A'} | Intento: ${sequence_number || 'N/A'}`);
         console.log(`📤 Recibiendo: ${file.originalname} (${(file.size / 1024).toFixed(1)} KB) para "${palabra}"`);
 
         // Step 1: Upload to S3
@@ -251,11 +252,14 @@ async function uploadVideoProxy(req, res) {
         const s3Duration = Date.now() - s3Start;
         console.log(`⏱️ [Timing] S3 Upload: ${s3Duration}ms`);
 
-        // Step 2: Save metadata to DB
+        // Step 2: Save metadata to DB with session info
         const dbStart = Date.now();
         const video = await db.insertVideo({
             palabra,
             s3_key,
+            session_id: session_id || null,
+            sequence_number: sequence_number ? parseInt(sequence_number) : null,
+            session_started_at: session_started_at || null,
         });
         const dbDuration = Date.now() - dbStart;
         console.log(`⏱️ [Timing] DB Insert: ${dbDuration}ms`);

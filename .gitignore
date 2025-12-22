@@ -36,6 +36,7 @@ coverage/
 
 # Database
 *.sql
+!migrations/*.sql
 reset-schema.sql
 
 # Docker (opcional - descomentar si no quieres versionar)

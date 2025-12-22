@@ -92,16 +92,22 @@ async function initializeSchema() {
 
 /**
  * Insert video metadata into database
- * @param {Object} videoData - { palabra, s3_key }
+ * @param {Object} videoData - { palabra, s3_key, session_id, sequence_number, session_started_at }
  * @returns {Promise<Object>} - Inserted row
  */
-async function insertVideo({ palabra, s3_key }) {
+async function insertVideo({ palabra, s3_key, session_id, sequence_number, session_started_at }) {
     const query = `
-    INSERT INTO videos (palabra, s3_key)
-    VALUES ($1, $2)
+    INSERT INTO videos (palabra, s3_key, session_id, sequence_number, session_started_at)
+    VALUES ($1, $2, $3, $4, $5)
     RETURNING *
   `;
-    const values = [palabra.trim().toLowerCase(), s3_key];
+    const values = [
+        palabra.trim().toLowerCase(),
+        s3_key,
+        session_id || null,
+        sequence_number || null,
+        session_started_at || null
+    ];
 
     try {
         const result = await pool.query(query, values);
