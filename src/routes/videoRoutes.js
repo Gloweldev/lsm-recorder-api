@@ -39,6 +39,9 @@ router.get('/videos/count/:palabra', videoController.getVideoCount);
 // Delete video by session and sequence
 router.delete('/videos/session/:sessionId/sequence/:sequenceNumber', videoController.deleteVideoBySession);
 
+// Export videos for Python script
+router.get('/videos/export', videoController.exportVideos);
+
 // Palabras routes
 router.get('/palabras', palabrasController.getPalabras);
 router.post('/palabras', palabrasController.createPalabra);

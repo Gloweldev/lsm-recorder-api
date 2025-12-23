@@ -378,6 +378,76 @@ async function deleteVideoBySession(req, res) {
     }
 }
 
+/**
+ * Export all videos grouped by palabra with download URLs
+ * GET /api/videos/export
+ * Returns structure for Python script to download and organize
+ */
+async function exportVideos(req, res) {
+    try {
+        console.log('📦 Generando export de videos...');
+
+        // Get all videos from DB
+        const result = await db.pool.query(`
+            SELECT id, palabra, s3_key, session_id, sequence_number, created_at
+            FROM videos
+            ORDER BY palabra, session_id, sequence_number
+        `);
+
+        const videos = result.rows;
+
+        // Group by palabra and generate download URLs
+        const grouped = {};
+
+        for (const video of videos) {
+            const palabra = video.palabra;
+
+            if (!grouped[palabra]) {
+                grouped[palabra] = [];
+            }
+
+            // Generate signed download URL (valid for 1 hour)
+            const downloadUrl = await s3.generateDownloadUrl(video.s3_key);
+
+            // Generate suggested filename
+            const extension = video.s3_key.split('.').pop() || 'mp4';
+            const filename = `${video.session_id}_${video.sequence_number}.${extension}`;
+
+            grouped[palabra].push({
+                id: video.id,
+                session_id: video.session_id,
+                sequence_number: video.sequence_number,
+                s3_key: video.s3_key,
+                download_url: downloadUrl,
+                suggested_filename: filename,
+                created_at: video.created_at,
+            });
+        }
+
+        // Get counts per palabra
+        const summary = Object.entries(grouped).map(([palabra, vids]) => ({
+            palabra,
+            count: vids.length,
+        }));
+
+        console.log(`✅ Export generado: ${videos.length} videos en ${Object.keys(grouped).length} palabras`);
+
+        res.json({
+            success: true,
+            total_videos: videos.length,
+            total_palabras: Object.keys(grouped).length,
+            summary,
+            palabras: grouped,
+        });
+    } catch (error) {
+        console.error('❌ Error exportando videos:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+        });
+    }
+}
+
 module.exports = {
     getUploadUrl,
     saveVideoMetadata,
@@ -388,4 +458,5 @@ module.exports = {
     uploadVideoProxy,
     testS3Upload,
     deleteVideoBySession,
+    exportVideos,
 };
