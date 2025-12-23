@@ -381,19 +381,31 @@ async function deleteVideoBySession(req, res) {
 /**
  * Export all videos grouped by palabra with download URLs
  * GET /api/videos/export
+ * GET /api/videos/export?since=2024-01-01T00:00:00Z (only new videos after date)
  * Returns structure for Python script to download and organize
  */
 async function exportVideos(req, res) {
     try {
-        console.log('📦 Generando export de videos...');
+        const { since } = req.query;
 
-        // Get all videos from DB
-        const result = await db.pool.query(`
+        let query = `
             SELECT id, palabra, s3_key, session_id, sequence_number, created_at
             FROM videos
-            ORDER BY palabra, session_id, sequence_number
-        `);
+        `;
+        const values = [];
 
+        // Filter by date if 'since' is provided
+        if (since) {
+            query += ` WHERE created_at > $1`;
+            values.push(since);
+            console.log(`📦 Generando export incremental (desde ${since})...`);
+        } else {
+            console.log('📦 Generando export completo...');
+        }
+
+        query += ` ORDER BY palabra, session_id, sequence_number`;
+
+        const result = await db.pool.query(query, values);
         const videos = result.rows;
 
         // Group by palabra and generate download URLs
